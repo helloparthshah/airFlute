@@ -76,30 +76,36 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void start(int note) async {
-    if (!_isRecording.containsValue(true)) await changeVol(0);
+    bool flag = false;
+    if (!_isRecording.containsValue(true)) {
+      await changeVol(0);
+      flag = true;
+    }
     this.setState(() {
       if (!this._isRecording[note]) {
         this._isRecording[note] = true;
       }
     });
-    try {
-      _noiseSubscription =
-          _noiseMeter.noiseStream.listen((NoiseReading noiseReading) async {
-        /* this.setState(() {
+    _flutterMidi.playMidiNote(midi: note);
+
+    if (flag)
+      try {
+        _noiseSubscription =
+            _noiseMeter.noiseStream.listen((NoiseReading noiseReading) async {
+          /* this.setState(() {
           if (!this._isRecording[note]) {
             this._isRecording[note] = true;
           }
         }); */
 
-        setState(() {
-          _db = noiseReading.meanDecibel;
+          setState(() {
+            _db = noiseReading.meanDecibel;
+          });
+          await changeVol(((maxV / (90.3 - minDb)) * (_db - minDb)));
         });
-        await changeVol(((maxV / (90.3 - minDb)) * (_db - minDb)));
-      });
-      _flutterMidi.playMidiNote(midi: note);
-    } catch (exception) {
-      print(exception);
-    }
+      } catch (exception) {
+        print(exception);
+      }
   }
 
   Future<void> changeVol(double v) async {
@@ -134,16 +140,16 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void stopRecorder(int note) async {
+    this.setState(() {
+      this._isRecording[note] = false;
+      _flutterMidi.stopMidiNote(midi: note);
+      if (!_isRecording.containsValue(true)) _db = 0;
+    });
     try {
-      if (_noiseSubscription != null) {
+      if (_noiseSubscription != null && !_isRecording.containsValue(true)) {
         _noiseSubscription.cancel();
         _noiseSubscription = null;
       }
-      this.setState(() {
-        this._isRecording[note] = false;
-        _flutterMidi.stopMidiNote(midi: note);
-        if (!_isRecording.containsValue(true)) _db = 0;
-      });
 
       // if (!_isRecording.containsValue(true)) await changeVol(maxV.toDouble());
     } catch (err) {
